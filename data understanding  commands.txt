@@ -1,0 +1,139 @@
+** data understanding  commands **
+
+
+# Load required libraries
+library(tidyverse)
+library(skimr)
+library(DataExplorer)
+library(corrplot)
+library(moments)
+
+# Function for basic data summary
+basic_summary <- function(data) {
+  cat("\n=== Basic Data Summary ===\n")
+  # Dimensions
+  cat("\nDimensions:", dim(data))
+  
+  # Data types
+  cat("\n\nData Types:\n")
+  print(sapply(data, class))
+  
+  # Missing values
+  cat("\nMissing Values:\n")
+  print(colSums(is.na(data)))
+  
+  # Basic statistics
+  cat("\nNumerical Summary:\n")
+  print(summary(data))
+}
+
+# Function for detailed numerical analysis
+numerical_analysis <- function(data) {
+  num_cols <- sapply(data, is.numeric)
+  num_data <- data[, num_cols]
+  
+  cat("\n=== Numerical Analysis ===\n")
+  
+  # Detailed statistics
+  stats_df <- data.frame(
+    Mean = sapply(num_data, mean, na.rm = TRUE),
+    Median = sapply(num_data, median, na.rm = TRUE),
+    SD = sapply(num_data, sd, na.rm = TRUE),
+    Skewness = sapply(num_data, skewness, na.rm = TRUE),
+    Kurtosis = sapply(num_data, kurtosis, na.rm = TRUE),
+    Q1 = sapply(num_data, quantile, probs = 0.25, na.rm = TRUE),
+    Q3 = sapply(num_data, quantile, probs = 0.75, na.rm = TRUE)
+  )
+  
+  print(stats_df)
+  
+  # Create correlation matrix plot
+  cor_matrix <- cor(num_data, use = "complete.obs")
+  corrplot(cor_matrix, method = "color", type = "upper",
+           addCoef.col = "black", tl.col = "black", tl.srt = 45)
+}
+
+# Function for categorical analysis
+categorical_analysis <- function(data) {
+  cat_cols <- sapply(data, is.character) | sapply(data, is.factor)
+  cat_data <- data[, cat_cols]
+  
+  cat("\n=== Categorical Analysis ===\n")
+  
+  for(col in names(cat_data)) {
+    cat("\nFrequency table for", col, ":\n")
+    print(table(cat_data[[col]], useNA = "ifany"))
+    cat("\nPercentage distribution for", col, ":\n")
+    print(round(prop.table(table(cat_data[[col]], useNA = "ifany")) * 100, 2))
+  }
+}
+
+# Function for distribution analysis
+distribution_analysis <- function(data) {
+  num_cols <- sapply(data, is.numeric)
+  num_data <- data[, num_cols]
+  
+  # Create histogram and density plots
+  par(mfrow = c(2, ceiling(ncol(num_data)/2)))
+  for(col in names(num_data)) {
+    hist(num_data[[col]], main = paste("Histogram of", col),
+         prob = TRUE, col = "lightblue")
+    lines(density(num_data[[col]], na.rm = TRUE), col = "red")
+  }
+  par(mfrow = c(1,1))
+  
+  # Create Q-Q plots
+  par(mfrow = c(2, ceiling(ncol(num_data)/2)))
+  for(col in names(num_data)) {
+    qqnorm(num_data[[col]], main = paste("Q-Q Plot of", col))
+    qqline(num_data[[col]], col = "red")
+  }
+  par(mfrow = c(1,1))
+}
+
+# Function for outlier detection
+outlier_analysis <- function(data) {
+  num_cols <- sapply(data, is.numeric)
+  num_data <- data[, num_cols]
+  
+  cat("\n=== Outlier Analysis ===\n")
+  
+  for(col in names(num_data)) {
+    q1 <- quantile(num_data[[col]], 0.25, na.rm = TRUE)
+    q3 <- quantile(num_data[[col]], 0.75, na.rm = TRUE)
+    iqr <- q3 - q1
+    lower_bound <- q1 - 1.5 * iqr
+    upper_bound <- q3 + 1.5 * iqr
+    
+    outliers <- sum(num_data[[col]] < lower_bound | num_data[[col]] > upper_bound, na.rm = TRUE)
+    
+    cat("\nOutliers in", col, ":", outliers, "\n")
+    cat("Lower bound:", lower_bound, "\n")
+    cat("Upper bound:", upper_bound, "\n")
+  }
+  
+  # Create boxplots
+  boxplot(num_data, main = "Boxplots for Numerical Variables",
+          las = 2, cex.axis = 0.7)
+}
+
+# Example usage with sample data
+# Replace iris with your dataset
+data <- iris
+
+# Run all analyses
+basic_summary(data)
+numerical_analysis(data)
+categorical_analysis(data)
+distribution_analysis(data)
+outlier_analysis(data)
+
+# Additional useful functions
+# Comprehensive data profiling
+create_report(data, output_file = "data_report.html")
+
+# Quick summary using skimr
+skim(data)
+
+# Plot missing data patterns
+plot_missing(data)

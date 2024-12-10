@@ -1,0 +1,100 @@
+
+
+merged_data <- merge(dataset1, dataset2, by = "Date", all = TRUE)  # Adjust 'Date' as needed
+
+# Check the structure of the merged dataset
+str(merged_data)
+
+merged_data
+write.csv(merged_data, "C:/Users/user/Desktop/merged_data.csv", row.names = FALSE)
+
+#********************data prep (merged)***************
+
+# Check for missing values in each column
+missing_values <- sapply(merged_data, function(col) sum(is.na(col)))
+print(missing_values)  # Print the count of missing values per column
+
+# Percentage of missing values
+missing_percent <- sapply(merged_data, function(col) mean(is.na(col))) * 100
+print(missing_percent)
+# Replace missing values in numeric columns with the mean 
+merged_data[] <- lapply(merged_data, function(col) {
+  if (is.numeric(col)) {
+    col[is.na(col)] <- mean(col, na.rm = TRUE)
+  }
+  return(col)
+})
+# Remplacer les valeurs manquantes ou incorrectes par NA
+merged_data[merged_data == "-"] <- NA
+
+# Vérification après nettoyage
+head(merged_data)
+
+
+
+#***cheking and handling outlliers****
+## Boxplot 
+numeric_columns <- merged_data[, sapply(merged_data, is.numeric)]
+
+# Create boxplot for all numeric columns in dataset1
+boxplot(numeric_columns, 
+        main = "Boxplot for Outliers in Numeric Columns (dataset1)", 
+        las = 2,  # Rotate axis labels
+        col = "skyblue", 
+        border = "blue")
+
+#remove Sno, and S.no
+merged_data<-subset(merged_data,select=-Sno)
+# Remove the column "S. no." from merged_data
+merged_data <- subset(merged_data, select = -`S. No.`)
+#Death and Deaths gives the same info so we eliminate one of them
+merged_data <- subset(merged_data, select = -`Death`)
+
+
+# Replace outliers with the median for numeric columns
+replace_outliers <- function(x) {
+  if (is.numeric(x)) {
+    Q1 <- quantile(x, 0.25, na.rm = TRUE)
+    Q3 <- quantile(x, 0.75, na.rm = TRUE)
+    IQR <- Q3 - Q1
+    lower_bound <- Q1 - 1.5 * IQR
+    upper_bound <- Q3 + 1.5 * IQR
+    x[x < lower_bound | x > upper_bound] <- median(x, na.rm = TRUE)  # Replace outliers
+  }
+  return(x)
+}
+
+# Apply the outlier replacement to numeric columns
+merged_data[] <- lapply(merged_data, replace_outliers)
+
+# Visualize the dataset for anomalies
+summary(merged_data)
+boxplot(merged_data[, sapply(merged_data, is.numeric)], main = "Boxplot After Cleaning", las = 2)
+
+
+# Compute the correlation matrix for the merged data
+cor_matrix <- cor(merged_data[, sapply(merged_data, is.numeric)], use = "complete.obs")
+
+# Reshape the correlation matrix for visualization
+melted_cor_matrix <- melt(cor_matrix)
+
+# Plot the heatmap for correlation matrix
+library(ggplot2)
+ggplot(melted_cor_matrix, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0) +
+  theme_minimal() +
+  labs(title = "Correlation Matrix Heatmap", x = "", y = "") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#regression model
+
+# Exemple de régression linéaire pour prédire les décès en fonction des cas confirmés et actifs
+
+model <- lm(Deaths ~ `Confirmed` + `Active Cases` + Cured + `Cured/Discharged`, data=merged_data)
+summary(model)
+
+
+
+# Predict deaths based on the model
+merged_data$Predicted_Deaths <- predict(model, newdata = merged_data)

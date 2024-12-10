@@ -1,0 +1,109 @@
+**COVID-19 Death Prediction using Linear Regression in R**
+
+# Load required libraries
+library(tidyverse)
+library(lubridate)
+library(scales)
+library(stats)
+library(ggplot2)
+
+# Create sample COVID-19 dataset 
+# In practice, replace this with your actual data import
+covid_data <- data.frame(
+  date = seq(as.Date("2020-01-01"), as.Date("2020-12-31"), by="days"),
+  cases = runif(366, 1000, 5000),
+  deaths = runif(366, 50, 500),
+  testing_rate = runif(366, 0.05, 0.15),
+  hospitalization = runif(366, 200, 1000),
+  icu_patients = runif(366, 50, 200),
+  vaccination_rate = runif(366, 0, 0.7)
+)
+
+# Data preprocessing
+covid_data <- covid_data %>%
+  mutate(
+    month = month(date),
+    week = week(date),
+    deaths_lag7 = lag(deaths, 7),
+    cases_lag14 = lag(cases, 14)
+  ) %>%
+  na.omit()  # Remove rows with NA values
+
+# Split data into training and testing sets
+set.seed(123)
+sample_size <- floor(0.8 * nrow(covid_data))
+train_indices <- sample(seq_len(nrow(covid_data)), size = sample_size)
+
+train_data <- covid_data[train_indices, ]
+test_data <- covid_data[-train_indices, ]
+
+# Build multiple linear regression model
+covid_model <- lm(deaths ~ cases + testing_rate + hospitalization + 
+                  icu_patients + vaccination_rate + cases_lag14, 
+                data = train_data)
+
+# Model summary
+summary_stats <- summary(covid_model)
+
+# Make predictions on test data
+predictions <- predict(covid_model, newdata = test_data)
+
+# Calculate performance metrics
+mse <- mean((test_data$deaths - predictions)^2)
+rmse <- sqrt(mse)
+mae <- mean(abs(test_data$deaths - predictions))
+r_squared <- summary_stats$r.squared
+
+# Create visualization of actual vs predicted values
+prediction_plot <- ggplot(data.frame(
+  actual = test_data$deaths,
+  predicted = predictions
+)) +
+  geom_point(aes(x = actual, y = predicted), alpha = 0.5) +
+  geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +
+  labs(
+    title = "Actual vs Predicted COVID-19 Deaths",
+    x = "Actual Deaths",
+    y = "Predicted Deaths"
+  ) +
+  theme_minimal()
+
+# Time series plot of actual vs predicted values
+dates <- test_data$date
+time_series_plot <- ggplot() +
+  geom_line(data = test_data, aes(x = date, y = deaths, color = "Actual")) +
+  geom_line(data = data.frame(date = dates, deaths = predictions), 
+            aes(x = date, y = deaths, color = "Predicted")) +
+  labs(
+    title = "COVID-19 Deaths Over Time: Actual vs Predicted",
+    x = "Date",
+    y = "Number of Deaths",
+    color = "Type"
+  ) +
+  theme_minimal()
+
+# Print model performance metrics
+cat("\nModel Performance Metrics:\n")
+cat("Root Mean Square Error (RMSE):", rmse, "\n")
+cat("Mean Absolute Error (MAE):", mae, "\n")
+cat("R-squared:", r_squared, "\n")
+
+# Print variable importance
+var_importance <- data.frame(
+  Variable = names(coef(covid_model))[-1],
+  Importance = abs(coef(covid_model)[-1])
+) %>%
+  arrange(desc(Importance))
+
+print("\nVariable Importance:")
+print(var_importance)
+
+# Diagnostic plots
+par(mfrow = c(2, 2))
+plot(covid_model)
+
+# Function to make new predictions
+predict_deaths <- function(new_data) {
+  predictions <- predict(covid_model, newdata = new_data)
+  return(predictions)
+}
