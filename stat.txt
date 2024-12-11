@@ -1,4 +1,4 @@
-
+hello 
 
 merged_data <- merge(dataset1, dataset2, by = "Date", all = TRUE)  # Adjust 'Date' as needed
 

@@ -156,49 +156,6 @@ outlier_analysis <- function(data) {
 data1 <- read.csv(file = "covid_19_india.csv")
 data2 <- read.csv(file = "COVID-19_Cases.csv")
 
-# Convert dates using the correct format for each dataset
-data1$Date <- as.Date(data1$Date, format = "%Y-%m-%d")  # For dates like "2020-01-30"
-data2$Date <- as.Date(data2$Date, format = "%d/%m/%Y")  # For dates like "12/03/2020"
-
-# Verify the conversion worked
-print("Date range in data1:")
-print(range(data1$Date, na.rm = TRUE))
-
-print("Date range in data2:")
-print(range(data2$Date, na.rm = TRUE))
-
-# Now perform the merge with properly formatted dates
-merged_data <- merge(data1, data2, 
-                     by = "Date",
-                     all = FALSE)  # Only keep matching dates
-
-# Check the results
-print("Number of rows in each dataset:")
-print(paste("data1 rows:", nrow(data1)))
-print(paste("data2 rows:", nrow(data2)))
-print(paste("merged_data rows:", nrow(merged_data)))
-
-
-# Check for missing values in each column
-missing_values <- sapply(merged_data, function(col) sum(is.na(col)))
-print(missing_values)  # Print the count of missing values per column
-
-# Percentage of missing values
-missing_percent <- sapply(merged_data, function(col) mean(is.na(col))) * 100
-print(missing_percent)
-# Replace missing values in numeric columns with the mean 
-merged_data[] <- lapply(merged_data, function(col) {
-  if (is.numeric(col)) {
-    col[is.na(col)] <- mean(col, na.rm = TRUE)
-  }
-  return(col)
-})
-# Remplacer les valeurs manquantes ou incorrectes par NA
-merged_data[merged_data == "-"] <- NA
-
-# Vérification après nettoyage
-head(merged_data)
-
 
 #***cheking and handling outlliers****
 ## Boxplot 
@@ -237,7 +194,7 @@ sum(duplicated(merged_data))
 
 
 # Run all analyses
-basic_summary(merged_data)
+basic_summary(data1)
 numerical_analysis(merged_data)
 categorical_analysis(merged_data)
 distribution_analysis(merged_data)
