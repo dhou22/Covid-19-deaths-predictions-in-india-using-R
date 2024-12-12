@@ -1,146 +1,105 @@
+# COVID-19 Deaths Analysis in India
 
-#** project : Covid-19 deaths prediction in india ***#
 
-##################         1. DATA UNDERSTANDING        ####################
 
-##  Load required libraries
+
+################## 1. LIBRARY IMPORTS ##################
 library(tidyverse)
 library(skimr)
 library(DataExplorer)
 library(corrplot)
 library(moments)
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(reshape2)
+library(gridExtra)
+library(lubridate)
+library(rmarkdown)
+library(knitr)
+library(DT)
 
-##   Function for basic data summary
-basic_summary <- function(data) {
+
+
+
+
+
+################## 2. DATA UNDERSTANDING  ##################
+
+# Comprehensive data overview function
+data_overview <- function(data) {
   cat("\n=== Basic Data Summary ===\n")
   
-  # Dimensions
-  cat("\nDimensions:", dim(data))
+  # Dimensions and structure
+  cat("Dimensions (Rows, Columns): ", dim(data), "\n")
+  cat("\nStructure:\n")
+  str(data)
   
-  # Data types
-  cat("\n\nData Types:\n")
+  # Data types and missing values
+  cat("\nData Types:\n")
   print(sapply(data, class))
-  
-  # Missing values
   cat("\nMissing Values:\n")
   print(colSums(is.na(data)))
   
-  # Basic statistics
+  # Basic statistics for numeric columns
   cat("\nNumerical Summary:\n")
   print(summary(data))
 }
 
-
-
-##   Function for detailed numerical analysis
+# Enhanced numerical analysis function
 numerical_analysis <- function(data) {
-  num_cols <- sapply(data, is.numeric) #check if each column is numeric(true/false) and create a logical vector num_cols
-  num_data <- data[, num_cols] #select only the numeric columns (num_cols=true)
+  num_cols <- sapply(data, is.numeric)
+  num_data <- data[, num_cols]
   
   cat("\n=== Numerical Analysis ===\n")
   
-  # Detailed statistics
   stats_df <- data.frame(
-    Mean = sapply(num_data, mean, na.rm = TRUE), #calculates the mean of each column +ignoring missing values 
-    Median = sapply(num_data, median, na.rm = TRUE), #calculates the median of each column 
-    SD = sapply(num_data, sd, na.rm = TRUE), #sd:Standard Deviation measures how spread out the numbers are from their average 
-    Skewness = sapply(num_data, skewness, na.rm = TRUE), # Skewness measures the asymmetry of data distribution
-    Kurtosis = sapply(num_data, kurtosis, na.rm = TRUE), # kurtosis mesures how much extreme values we have+ identifying whether we have more outliers than a normal distribution 
-    Q1 = sapply(num_data, quantile, probs = 0.25, na.rm = TRUE), # 25% of num_data values are under q1 
-    Q3 = sapply(num_data, quantile, probs = 0.75, na.rm = TRUE)  # 75% of num_data values  are under q2 
+    Mean = sapply(num_data, mean, na.rm = TRUE),
+    Median = sapply(num_data, median, na.rm = TRUE),
+    SD = sapply(num_data, sd, na.rm = TRUE),
+    Skewness = sapply(num_data, skewness, na.rm = TRUE),
+    Kurtosis = sapply(num_data, kurtosis, na.rm = TRUE),
+    Q1 = sapply(num_data, quantile, probs = 0.25, na.rm = TRUE),
+    Q3 = sapply(num_data, quantile, probs = 0.75, na.rm = TRUE)
   )
   
   print(stats_df)
   
-  
-  # Visualize correlation matrix
-
+  # Correlation matrix visualization
   cor_matrix <- cor(num_data, use = "complete.obs")
-  
-  corrplot(cor_matrix,          # the correlation matrix to plot
-           method = "color",    # use colors to show correlations
-           type = "upper",      # show only upper triangle
-           addCoef.col = "black", # add correlation coefficients in black
-           tl.col = "black",    # make text labels black
-           tl.srt = 45)        # rotate text labels 45 degrees
+  corrplot(cor_matrix,
+           method = "color",
+           type = "upper",
+           addCoef.col = "black",
+           tl.col = "black",
+           tl.srt = 45)
 }
 
-
-
-##   Function for categorical analysis
-categorical_analysis <- function(data) {
+# Enhanced visualization function
+create_visualizations <- function(data, title = "Data Visualization") {
+  # Correlation heatmap
+  cor_matrix <- cor(data[, sapply(data, is.numeric)], use = "complete.obs")
+  melted_cor_matrix <- melt(cor_matrix)
   
-  cat_cols <- sapply(data, is.character) | sapply(data, is.factor)
-  cat_data <- data[, cat_cols]
+  heatmap <- ggplot(melted_cor_matrix, aes(x = Var1, y = Var2, fill = value)) +
+    geom_tile() +
+    scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0) +
+    theme_minimal() +
+    labs(title = "Correlation Matrix Heatmap", x = "", y = "") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
   
-  cat("\n=== Categorical Analysis ===\n")
+  # Boxplots for outlier detection
+  numeric_data <- data[, sapply(data, is.numeric)]
+  melted_data <- reshape2::melt(numeric_data, variable.name = "Feature", value.name = "Value")
   
-  for(col in names(cat_data)) {
-    
-    cat("\nFrequency table for", col, ":\n")
-    print(table(cat_data[[col]], useNA = "ifany"))
-    
-    cat("\nPercentage distribution for", col, ":\n")
-    print(round(prop.table(table(cat_data[[col]], useNA = "ifany")) * 100, 2))
-  }
-}
-
-
-
-##   Function for distribution analysis 
-distribution_analysis <- function(data) {
+  boxplots <- ggplot(melted_data, aes(x = Feature, y = Value)) +
+    geom_boxplot(outlier.colour = "red", outlier.shape = 16, outlier.size = 2) +
+    theme_minimal() +
+    labs(title = "Outlier Detection Boxplots", x = "Features", y = "Values") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
   
-  num_cols <- sapply(data, is.numeric)
-  num_data <- data[, num_cols]
-  
-  #create histogram and density plots 
-  par(mfrow = c(2,ceiling(ncol(num_data)/2)))
-  for (col in names(num_data)) {
-    hist(num_data[[col]], main = paste("Histogram of", col),
-         prob = TRUE, col = "lightblue")
-    lines(density(num_data[[col]], na.rm = TRUE), col = "red")
-  }
-  
-  par(mfrow = c(1,1))
-  
-  
-  # Create Q-Q plots
-  par(mfrow = c(2, ceiling(ncol(num_data)/2)))
-  for(col in names(num_data)) {
-    qqnorm(num_data[[col]], main = paste("Q-Q Plot of", col))
-    qqline(num_data[[col]], col = "red")
-  }
-  par(mfrow = c(1,1))
-}
-
-
-
-##   Function for outlier detection
-outlier_analysis <- function(data) {
-  num_cols <- sapply(data, is.numeric)
-  num_data <- data[, num_cols]
-  
-  cat("\n=== Outlier Analysis ===\n")
-  
-  for(col in names(num_data)) {
-    q1 <- quantile(num_data[[col]], 0.25, na.rm = TRUE)
-    q3 <- quantile(num_data[[col]], 0.75, na.rm = TRUE)
-    iqr <- q3 - q1
-    lower_bound <- q1 - 1.5 * iqr
-    upper_bound <- q3 + 1.5 * iqr
-    
-    outliers <- sum(num_data[[col]] < lower_bound | num_data[[col]] > upper_bound, na.rm = TRUE)
-    
-    cat("\nOutliers in", col, ":", outliers, "\n")
-    cat("Lower bound:", lower_bound, "\n")
-    cat("Upper bound:", upper_bound, "\n")
-  }
-  
-  
-  
-  # Create boxplots
-  boxplot(num_data, main = "Boxplots for Numerical Variables",
-          las = 2, cex.axis = 0.7)
+  # Arrange plots
+  grid.arrange(heatmap, boxplots, ncol = 1)
 }
 
 
@@ -149,66 +108,299 @@ outlier_analysis <- function(data) {
 
 
 
-####################        2. DATA PREPARATION       ######################
+##################     3. DATA PREPARATION      ##################
 
-
-# Read the CSV files
-data1 <- read.csv(file = "covid_19_india.csv")
-data2 <- read.csv(file = "COVID-19_Cases.csv")
-
-
-#***cheking and handling outlliers****
-## Boxplot 
-numeric_columns <- merged_data[, sapply(merged_data, is.numeric)]
-
-# Create boxplot for all numeric columns in dataset1
-boxplot(numeric_columns, 
-        main = "Boxplot for Outliers in Numeric Columns (dataset1)", 
-        las = 2,  # Rotate axis labels
-        col = "skyblue", 
-        border = "blue")
-
-#remove Sno, and S.no
-merged_data<-subset(merged_data,select=-Sno)
-# Remove the column "S. no." from merged_data
-merged_data <- subset(merged_data, select = -`S. No.`)
-#Death and Deaths gives the same info so we eliminate one of them
-merged_data <- subset(merged_data, select = -`Death`)
-
-
-# Replace outliers with the median for numeric columns
-replace_outliers <- function(x) {
-  if (is.numeric(x)) {
-    Q1 <- quantile(x, 0.25, na.rm = TRUE)
-    Q3 <- quantile(x, 0.75, na.rm = TRUE)
-    IQR <- Q3 - Q1
-    lower_bound <- Q1 - 1.5 * IQR
-    upper_bound <- Q3 + 1.5 * IQR
-    x[x < lower_bound | x > upper_bound] <- median(x, na.rm = TRUE)  # Replace outliers
+# Handle missing data
+handle_missing_data <- function(dataset) {
+  for (col_name in colnames(dataset)) {
+    if (is.numeric(dataset[[col_name]])) {
+      dataset[[col_name]][is.na(dataset[[col_name]])] <- median(dataset[[col_name]], na.rm = TRUE)
+    } else {
+      mode_value <- names(sort(table(dataset[[col_name]]), decreasing = TRUE))[1]
+      dataset[[col_name]][is.na(dataset[[col_name]])] <- mode_value
+    }
   }
-  return(x)
+  return(dataset)
 }
 
-print("Number of completely duplicate rows:")
-sum(duplicated(merged_data))
+# Handle outliers using IQR method
+handle_outliers <- function(dataset) {
+  for (col_name in colnames(dataset)) {
+    if (is.numeric(dataset[[col_name]])) {
+      Q1 <- quantile(dataset[[col_name]], 0.25, na.rm = TRUE)
+      Q3 <- quantile(dataset[[col_name]], 0.75, na.rm = TRUE)
+      IQR <- Q3 - Q1
+      
+      lower_bound <- Q1 - 1.5 * IQR
+      upper_bound <- Q3 + 1.5 * IQR
+      
+      dataset[[col_name]][dataset[[col_name]] < lower_bound | 
+                            dataset[[col_name]] > upper_bound] <- 
+        median(dataset[[col_name]], na.rm = TRUE)
+    }
+  }
+  return(dataset)
+}
 
-
-# Run all analyses
-basic_summary(data1)
-numerical_analysis(merged_data)
-categorical_analysis(merged_data)
-distribution_analysis(merged_data)
-outlier_analysis(merged_data)
-
-# Additional useful functions
-# Comprehensive data profiling
-create_report(merged_data, output_file = "data_report.html")
-
-# Quick summary using skimr
-skim(merged_data)
-
-# Plot missing data patterns
-plot_missing(data)
-
+# Feature engineering and standardization
+prepare_features <- function(dataset) {
+  # Encode categorical variables
+  for (col_name in colnames(dataset)) {
+    if (is.factor(dataset[[col_name]]) || is.character(dataset[[col_name]])) {
+      dataset[[col_name]] <- as.numeric(factor(dataset[[col_name]]))
+    }
+  }
   
+  # Standardize numeric variables
+  numeric_cols <- sapply(dataset, is.numeric)
+  dataset[numeric_cols] <- scale(dataset[numeric_cols])
   
+  return(dataset)
+}
+
+
+
+
+
+
+##################     4. MODELING     ##################
+
+train_test_model <- function(dataset, train_start, train_end, test_start, test_end) {
+  # Prepare date ranges
+  train_data <- dataset[dataset$Date >= as.Date(train_start) & 
+                          dataset$Date <= as.Date(train_end), ]
+  test_data <- dataset[dataset$Date >= as.Date(test_start) & 
+                         dataset$Date <= as.Date(test_end), ]
+  
+  # Prepare features
+  train_features <- train_data[, !(names(train_data) %in% "Deaths")]
+  train_target <- train_data$Deaths
+  
+  # Train model
+  model <- lm(train_target ~ ., data = train_features)
+  
+  # Make predictions
+  test_features <- test_data[, !(names(test_data) %in% "Deaths")]
+  predictions <- predict(model, newdata = test_features)
+  
+  # Evaluate results
+  results <- data.frame(
+    Date = test_data$Date,
+    Actual = test_data$Deaths,
+    Predicted = predictions
+  )
+  
+  # Calculate metrics
+  metrics <- list(
+    R2 = summary(model)$r.squared,
+    RMSE = sqrt(mean((results$Actual - results$Predicted)^2)),
+    MAE = mean(abs(results$Actual - results$Predicted))
+  )
+  
+  return(list(model = model, results = results, metrics = metrics))
+}
+
+
+
+
+
+
+
+################## 5.  EXECUTION ##################
+
+# Read and prepare data
+dataset1 <- read.csv("covid_19_india.csv")
+dataset2 <- read.csv("COVID-19_Cases.csv")
+
+# Initial data cleanup
+dataset1 <- subset(dataset1, select = -Sno)
+dataset2 <- subset(dataset2, select = -`S. No.`)
+
+# Handle missing data
+dataset1 <- handle_missing_data(dataset1)
+dataset2 <- handle_missing_data(dataset2)
+
+# Merge datasets
+merged_dataset <- merge(dataset1, dataset2, by = "Date", all = TRUE)
+
+# Clean and prepare final dataset
+merged_dataset <- handle_missing_data(merged_dataset)
+merged_dataset <- handle_outliers(merged_dataset)
+merged_dataset <- prepare_features(merged_dataset)
+
+# Create visualizations
+create_visualizations(merged_dataset)
+
+# Train and evaluate model
+model_results <- train_test_model(
+  merged_dataset,
+  train_start = "2020-01-22",
+  train_end = "2020-01-28",
+  test_start = "2020-01-29",
+  test_end = "2020-02-04"
+)
+
+# Print results
+print(model_results$metrics)
+
+
+
+
+
+
+
+################## 6. REPORTING FUNCTIONS ##################
+
+generate_analysis_plots <- function(data) {
+  # Time series plot of deaths
+  deaths_plot <- ggplot(data, aes(x = Date, y = Deaths)) +
+    geom_line(color = "blue") +
+    geom_point(color = "red", size = 2) +
+    theme_minimal() +
+    labs(title = "COVID-19 Deaths Over Time",
+         x = "Date",
+         y = "Number of Deaths")
+  
+  # Distribution of deaths
+  death_dist_plot <- ggplot(data, aes(x = Deaths)) +
+    geom_histogram(fill = "skyblue", color = "black") +
+    theme_minimal() +
+    labs(title = "Distribution of COVID-19 Deaths",
+         x = "Number of Deaths",
+         y = "Frequency")
+  
+  return(list(deaths_plot = deaths_plot, death_dist_plot = death_dist_plot))
+}
+
+create_html_report <- function(data, model_results, plots) {
+  # Create R Markdown template
+  rmd_content <- '
+---
+title: "COVID-19 Deaths Analysis in India"
+date: "`r format(Sys.time(), "%d %B, %Y")`"
+output: 
+  html_document:
+    theme: cosmo
+    toc: true
+    toc_float: true
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Executive Summary
+
+This report presents a comprehensive analysis of COVID-19 deaths in India, including data exploration, statistical analysis, and predictive modeling results.
+
+## 1. Data Overview
+
+### 1.1 Dataset Dimensions
+```{r}
+dim_data <- dim(data)
+cat("Number of rows:", dim_data[1], "\nNumber of columns:", dim_data[2])
+```
+
+### 1.2 Summary Statistics
+```{r}
+summary_stats <- summary(data)
+knitr::kable(as.data.frame(summary_stats), caption = "Summary Statistics")
+```
+
+## 2. Data Visualization
+
+### 2.1 Time Series Analysis
+```{r, fig.width=10, fig.height=6}
+print(plots$deaths_plot)
+```
+
+### 2.2 Distribution Analysis
+```{r, fig.width=10, fig.height=6}
+print(plots$death_dist_plot)
+```
+
+### 2.3 Correlation Analysis
+```{r, fig.width=10, fig.height=8}
+numeric_data <- data[, sapply(data, is.numeric)]
+correlation_matrix <- cor(numeric_data, use = "complete.obs")
+corrplot(correlation_matrix, method = "color", type = "upper", 
+         addCoef.col = "black", tl.col = "black", tl.srt = 45)
+```
+
+## 3. Model Results
+
+### 3.1 Model Performance Metrics
+```{r}
+metrics_df <- data.frame(
+  Metric = names(model_results$metrics),
+  Value = unlist(model_results$metrics)
+)
+knitr::kable(metrics_df, caption = "Model Performance Metrics")
+```
+
+### 3.2 Predictions vs Actual Values
+```{r}
+results_df <- head(model_results$results, 10)
+knitr::kable(results_df, caption = "Sample of Predicted vs Actual Values")
+```
+
+### 3.3 Model Visualization
+```{r, fig.width=10, fig.height=6}
+ggplot(model_results$results, aes(x = Date)) +
+  geom_line(aes(y = Actual, color = "Actual")) +
+  geom_line(aes(y = Predicted, color = "Predicted")) +
+  theme_minimal() +
+  labs(title = "Actual vs Predicted Deaths",
+       y = "Number of Deaths",
+       color = "Legend") +
+  scale_color_manual(values = c("Actual" = "blue", "Predicted" = "red"))
+```
+
+## 4. Key Findings
+
+1. The model achieved an R-squared value of `r round(model_results$metrics$R2, 3)`, indicating that `r round(model_results$metrics$R2 * 100, 1)`% of the variance in deaths is explained by our predictors.
+
+2. The Root Mean Square Error (RMSE) of `r round(model_results$metrics$RMSE, 2)` suggests the average prediction error in number of deaths.
+
+3. The Mean Absolute Error (MAE) of `r round(model_results$metrics$MAE, 2)` provides the average absolute difference between predicted and actual deaths.
+
+## 5. Conclusions and Recommendations
+
+Based on the analysis, we can conclude:
+
+1. The time series analysis shows [interpretation of time series trends]
+2. The correlation analysis reveals [key correlations found]
+3. The predictive model demonstrates [model performance interpretation]
+
+Recommendations:
+1. [First recommendation based on findings]
+2. [Second recommendation based on findings]
+3. [Third recommendation based on findings]
+'
+
+# Write the R Markdown content to a file
+writeLines(rmd_content, "covid_analysis_report.Rmd")
+
+# Render the report
+rmarkdown::render("covid_analysis_report.Rmd", 
+                  output_file = "covid_analysis_report.html",
+                  params = list(data = data,
+                                model_results = model_results,
+                                plots = plots))
+}
+
+
+
+################## 6. MAIN EXECUTION ##################
+
+# [Previous main execution code remains the same up to model training]
+
+# Generate plots for the report
+analysis_plots <- generate_analysis_plots(merged_dataset)
+
+# Create the HTML report
+create_html_report(merged_dataset, model_results, analysis_plots)
+
+# Print confirmation message
+cat("\nAnalysis complete. The report has been generated as 'covid_analysis_report.html'")
