@@ -6,7 +6,7 @@ library(dplyr)
 library(reshape2)
 library(gridExtra)
 library(lubridate)
-
+install.packages("gridExtra")
 # install.packages("ggplot2")
 # install.packages("reshape2")
 ##############################   Loading datasets   ##############################
@@ -45,24 +45,17 @@ data_overview <- function(data) {
   cat("\n")
 }
 
-
-
-
 # Standardize the Date format in dataset1
 #dataset1$Date <- as.Date(dataset1$Date, format = "%m/%d/%Y")  # Adjust format based on dataset1
 # Standardize the Date format in dataset2
 #dataset2$Date <- as.Date(dataset2$Date, format = "%d/%m/%Y")  # Adjust format based on dataset2
-
-
 data_overview(dataset1)
 data_overview(dataset2)
 #data_overview(merged_dataset)
 ##############################   Data Exploration   ##############################
 # Deleting ID column
-dataset1 <- subset(dataset1, select = -`S..No.`)
+dataset1 <- subset(dataset1, select = -`Sno`)
 dataset2 <- dataset2[, -1]  # Removes the first column
-
-
 
 ##############################   Univariate analysis (Data distribution)   ##############################
 
@@ -114,9 +107,6 @@ create_boxplots <- function(dataset, title = "Boxplots of Numeric Features") {
 
 #create_boxplots(dataset1)
 #create_boxplots(dataset2)
-
-
-
 
 ##############################   Bivariate Analysis   ##############################
 
@@ -178,9 +168,6 @@ bivariate_analysis <- function(data) {
 #bivariate_analysis(dataset1)	
 #bivariate_analysis(dataset2)
 
-
-
-
 ##############################   Multivariate Analysis   ##############################
 
 create_correlation_heatmap <- function(dataset, title = "Correlation Matrix Heatmap") {
@@ -202,9 +189,6 @@ create_correlation_heatmap <- function(dataset, title = "Correlation Matrix Heat
 }
 #create_correlation_heatmap(dataset1)
 #create_correlation_heatmap(dataset2)
-
-
-
 ##############################   Check for outliers    ##################################
 
 show_outliers_boxplot <- function(dataset) {
@@ -248,12 +232,7 @@ show_outliers_boxplot <- function(dataset) {
 #show_outliers_boxplot(dataset1)
 #show_outliers_boxplot(dataset2)
 
-
-
-
 ##############################   Data Preparation   ##############################
-
-
 ############################   Handeling Mising data   ###########################
 handling_missing_data <- function(dataset) {
   # For each column in the dataset
@@ -275,18 +254,10 @@ handling_missing_data <- function(dataset) {
 }
 dataset2 <-handling_missing_data(dataset2)
 dataset1 <-handling_missing_data(dataset1)
-
-
-
 ############################   Merging datasets   ###########################
-
 merged_data
 merged_dataset <- merge(dataset1, dataset2, by = "Date", all = TRUE)
 merged_dataset <-handling_missing_data(merged_dataset)
-
-
-
-
 ############################   Handeling Outliers   ###########################
 
 handling_outliers <- function(dataset) {
@@ -323,8 +294,6 @@ show_outliers_boxplot(merged_dataset)
 merged_dataset <- handling_outliers(merged_dataset)
 show_outliers_boxplot(merged_dataset)
 
-
-
 ############################   Encoding   ###########################
 encode_features <- function(dataset) {
   for (col_name in colnames(dataset)) {
@@ -345,9 +314,6 @@ encode_features <- function(dataset) {
 merged_dataset_encoded <- encode_features(merged_dataset)
 
 str(merged_dataset_encoded)
-
-
-
 
 ############################   Feature selection   ###########################
 
@@ -377,9 +343,6 @@ delete_collinear_features <- function(dataset, threshold = 0.8) {
 merged_dataset_encoded <- delete_collinear_features(merged_dataset_encoded, threshold = 0.9)
 write.csv(merged_dataset_encoded, "merged_dataset_encoded.csv", row.names = TRUE)
 
-
-
-
 ################################# Extracting week 4 and 5 data#######################
 ###########   Linear Regression (1-4th -> 5th week of 2020 dataset)   ########
 #rm(week_4_data)
@@ -399,12 +362,8 @@ week_5_data <- merged_dataset_encoded [ merged_dataset_encoded $Date >= as.Date(
 
 week_5_data <- na.omit(week_5_data)  # Remove rows with NAs
 
+############################   Standarization   ###########################
 
-
-
-############################   Standardization   ###########################
-
-# Function to standardize numeric columns in the dataset (z-score normalization)
 standardize_dataset <- function(dataset) {
   # Loop through each column in the dataset
   for (col_name in colnames(dataset)) {
@@ -414,50 +373,41 @@ standardize_dataset <- function(dataset) {
       mean_value <- mean(dataset[[col_name]], na.rm = TRUE)
       sd_value <- sd(dataset[[col_name]], na.rm = TRUE)
       
-      # Avoid division by zero if the standard deviation is zero
-      if (sd_value != 0) {
-        dataset[[col_name]] <- (dataset[[col_name]] - mean_value) / sd_value
-      } else {
-        dataset[[col_name]] <- 0  # Assign 0 if standard deviation is zero (no variation)
-      }
+      # Apply standardization
+      dataset[[col_name]] <- (dataset[[col_name]] - mean_value) / sd_value
     }
   }
   return(dataset)
 }
 
-# Assuming merged_dataset_encoded is already loaded/defined
+merged_dataset_encoded
 standardized_dataset <- standardize_dataset(merged_dataset_encoded)
-
-# Print the first few rows of the standardized dataset to verify
 print(head(standardized_dataset))
 
-# Create a correlation heatmap (if the function is defined elsewhere)
 create_correlation_heatmap(standardized_dataset)
-
-
-
-
 ############################   Modeling   ###########################
-# Data filtering 
-# Ensure the 'Date' column is in Date format for all datasets
+
+#data filtering 
+# Ensure the 'Date' column is in Date format
 dataset1$Date <- as.Date(dataset1$Date, format = "%d/%m/%Y")
 dataset2$Date <- as.Date(dataset2$Date, format = "%d/%m/%Y")
 merged_dataset_encoded$Date <- as.Date(merged_dataset_encoded$Date, format = "%d/%m/%Y")
 
-# Filter Data for Weeks 4, 5, and 6
+# Filter Week 4 Data (Ensure the date range is correct)
 week_4_data <- merged_dataset_encoded %>%
   filter(Date >= as.Date("2021-02-01") & Date <= as.Date("2021-02-28")) %>%
   na.omit()
 
+# Filter Week 5 Data
 week_5_data <- merged_dataset_encoded %>%
   filter(Date >= as.Date("2021-03-01") & Date <= as.Date("2021-03-07")) %>%
   na.omit()
 
+# Filter Week 6 Data (for testing later)
 week_6_data <- merged_dataset_encoded %>%
   filter(Date >= as.Date("2021-03-08") & Date <= as.Date("2021-03-14")) %>%
   na.omit()
-
-# Standardize data
+#Standardizing data
 # Standardize Week 4 Data (Training)
 week_4_data <- standardize_dataset(week_4_data)
 
@@ -465,20 +415,22 @@ week_4_data <- standardize_dataset(week_4_data)
 week_5_data <- standardize_dataset(week_5_data)
 week_6_data <- standardize_dataset(week_6_data)
 
-# Prepare for model training 
+rm(week_4_input)
+#model training 
 # Extract target variable (Deaths) from Week 4 Data
 week_4_output <- week_4_data$Death  # The target variable
 
 # Prepare input features by removing 'Deaths' column
 week_4_input <- week_4_data[, !(names(week_4_data) %in% "Death")]
-week_4_input <- week_4_input[, colSums(is.na(week_4_input)) < nrow(week_4_input)]  # Remove columns with all NAs
+# Remove columns where all values are NA
+week_4_input <-  week_4_input [, colSums(is.na( week_4_input )) < nrow( week_4_input )]
 
 # Train the Linear Regression Model
 linear_model <- lm(week_4_output ~ ., data = week_4_input)  # 'Deaths' as the target
-
-# Prepare Week 5 Data for Predictions
+#Predicting and Evaluating Model on Week 5
+# Prepare the input features for Week 5 data (remove 'Deaths' column)
 week_5_input <- week_5_data[, !(names(week_5_data) %in% "Death")]
-week_5_input <- week_5_input[, colSums(is.na(week_5_input)) < nrow(week_5_input)]  # Remove columns with all NAs
+week_5_input <-  week_5_input [, colSums(is.na( week_5_input )) < nrow( week_5_input )]
 
 # Make predictions using the trained model
 predictions <- predict(linear_model, newdata = week_5_input)
@@ -486,128 +438,103 @@ predictions <- predict(linear_model, newdata = week_5_input)
 # Compare the predicted deaths with the actual deaths for Week 5
 results <- data.frame(Actual = week_5_data$Death, Predicted = predictions)
 print(head(results))  # Display a few results
-
 # Summarize model performance
-cat("Linear Model R-squared: ", summary(linear_model)$r.squared, "\n")
+cat("R-squared: ", summary(linear_model)$r.squared, "\n")
 cat("Adjusted R-squared: ", summary(linear_model)$adj.r.squared, "\n")
 
-# ANOVA for Linear Model
+#ANOVA
+# Model Summary
+summary(linear_model)
+
+# ANOVA
 anova_result <- anova(linear_model)
 print(anova_result)
-
-# Function to train models (RLM, RF) using Week 4 data
-train_models <- function(data) {
-  # Split data into training and testing sets
-  train_idx <- data$Week <= 4
-  train_data <- data[train_idx, ]
-  test_data <- data[!train_idx & data$Week <= 6, ]
-  
-  # Prepare formula
-  predictors <- names(data)[!names(data) %in% c("Date", "Week", "Deaths")]
-  formula <- as.formula(paste("Deaths ~", paste(predictors, collapse = " + ")))
-  
-  # Train models
-  set.seed(123)
-  
-  # Robust Linear Model
-  model_rlm <- rlm(formula, data = train_data)
-  
-  # Random Forest with cross-validation
-  ctrl <- trainControl(method = "cv", number = 5)
-  model_rf <- train(
-    formula,
-    data = train_data,
-    method = "rf",
-    trControl = ctrl,
-    ntree = 500
-  )
-  
-  return(list(
-    models = list(RLM = model_rlm, RF = model_rf),
-    train_data = train_data,
-    test_data = test_data
-  ))
-}
-
-# Call the function to train models using Week 4 data
-models_result <- train_models(merged_dataset_encoded)
-
-# Evaluate the Random Forest model
-rf_predictions <- predict(models_result$models$RF, newdata = models_result$test_data)
-rf_results <- data.frame(Actual = models_result$test_data$Deaths, Predicted = rf_predictions)
-print(head(rf_results))  # Display a few results
-
-
-
-
 ##################################################################################
-# Reverse standardization for predictions
-#destandarization fct----> IT IS NOT WORKING !!!
-destandarize_dataset <- function(dataset, original_means, original_sds) {
-  # Ensure that the dataset and original means/standard deviations have matching column names
-  valid_columns <- intersect(names(dataset), names(original_means))
+# Function to standardize dataset while storing original parameters
+standardize_dataset <- function(dataset) {
+  # Create lists to store means and standard deviations
+  means <- list()
+  sds <- list()
   
-  if(length(valid_columns) == 0) {
-    stop("No matching columns found between dataset and provided means/sds.")
+  # Create a copy of the dataset to avoid modifying the original
+  standardized_data <- dataset
+  
+  # Loop through each column in the dataset
+  for (col_name in colnames(dataset)) {
+    # Check if the column is numeric and not a date
+    if (is.numeric(dataset[[col_name]]) && !inherits(dataset[[col_name]], "Date")) {
+      # Calculate and store mean and standard deviation
+      means[[col_name]] <- mean(dataset[[col_name]], na.rm = TRUE)
+      sds[[col_name]] <- sd(dataset[[col_name]], na.rm = TRUE)
+      
+      # Standardize the column
+      standardized_data[[col_name]] <- (dataset[[col_name]] - means[[col_name]]) / sds[[col_name]]
+    }
   }
   
-  # Filter dataset to keep only the valid columns
-  dataset <- dataset[, valid_columns]
+  # Add the means and sds as attributes to the standardized dataset
+  attr(standardized_data, "means") <- means
+  attr(standardized_data, "sds") <- sds
   
-  for (col_name in valid_columns) {
-    # Retrieve original mean and standard deviation
-    mean_value <- original_means[col_name]
-    sd_value <- original_sds[col_name]
-    
-    # Reverse standardization
-    dataset[[col_name]] <- (dataset[[col_name]] * sd_value) + mean_value
-  }
-  
-  return(dataset)
+  return(standardized_data)
 }
-# Assuming 'results', 'original_means', and 'original_sds' are already defined and standardized
-destandarized_results <- destandarize_dataset(results, original_means, original_sds)
 
-# Print the destandardized results
+# Function to destandardize dataset using stored parameters
+destandardize_dataset <- function(dataset, reference_dataset = NULL) {
+  # If reference_dataset is provided, use its attributes
+  if (!is.null(reference_dataset)) {
+    means <- attr(reference_dataset, "means")
+    sds <- attr(reference_dataset, "sds")
+  } else {
+    # Otherwise use the dataset's own attributes
+    means <- attr(dataset, "means")
+    sds <- attr(dataset, "sds")
+  }
+  
+  # Check if means and sds exist
+  if (is.null(means) || is.null(sds)) {
+    stop("No standardization parameters found. The dataset must be standardized first.")
+  }
+  
+  # Create a copy of the dataset
+  destandardized_data <- dataset
+  
+  # Loop through each column that has stored parameters
+  for (col_name in names(means)) {
+    if (col_name %in% colnames(dataset)) {
+      # Reverse the standardization
+      destandardized_data[[col_name]] <- (dataset[[col_name]] * sds[[col_name]]) + means[[col_name]]
+    }
+  }
+  
+  return(destandardized_data)
+}
+results <- data.frame(
+  Actual = week_5_data$Death,
+  Predicted = predictions
+)
+
+# Destandardize the results using Week 4's parameters
+destandardized_results <- destandardize_dataset(results, standardized_week4)
+# Example usage for the linear regression scenario:
+# Standardize training data (Week 4)
+standardized_week4 <- standardize_dataset(week_4_data)
+
+# Standardize test data (Week 5) using Week 4's parameters
+destandardized_results <- destandardize_dataset(results, standardized_week4)
 print(head(destandardized_results))
 
+# Train model and make predictions
+# ... [your existing model training code] ...
 
+# Create results dataframe with standardized predictions
+results <- data.frame(
+  Actual = week_5_data$Death,
+  Predicted = predictions
+)
 
-###########   Linear Regression (4th -> 6th week of 2020 dataset)   ########
-# Make sure the Date column is in the Date format (if not, convert it)
-
-
-# Filter data for week 6 (test data)
-week_6_data <- standardized_dataset[standardized_dataset$Date >= as.Date("05/03/2020") & 
-                                      standardized_dataset$Date <= as.Date("2020-02-11"), ]
-week_6_data <- na.omit(week_6_data)  # Remove rows with NAs
-
-# Train the linear regression model using week 4 data
-week_4_input <- week_4_data[, !(names(week_4_data) %in% "Deaths")]  # All columns except Deaths
-week_4_output <- week_4_data$Deaths  # Deaths column from week 4 (target variable)
-
-linear_model <- lm(week_4_output ~ ., data = week_4_input)  # Train the model
-
-# Test the model on week 6 data (to predict Deaths for week 6)
-week_6_input <- week_6_data[, !(names(week_6_data) %in% "Deaths")]  # Features for week 6 (no Deaths column)
-predictions <- predict(linear_model, newdata = week_6_input)  # Predict Deaths for week 6
-
-# Compare the predictions with the actual Deaths in week 6
-results <- data.frame(Actual = week_6_data$Deaths, Predicted = predictions)
-
-# Print the first few results
-head(results)
-
-# Print the sum of the predicted values
-sum_predicted <- sum(predictions)
-print(paste("Sum of predicted values:", sum_predicted))
-
-# Print the sum of the actual values
-sum_actual <- sum(week_6_data$Deaths)
-print(paste("Sum of actual values:", sum_actual))
-
-
-
+# Destandardize the results using Week 4's parameters
+destandardized_results <- destandardize_dataset(results, standardized_week4)
 
 
 ###################################################
@@ -649,10 +576,6 @@ ggplot(results, aes(x = Actual, y = Predicted)) +
   geom_point(color = 'blue') +
   geom_abline(slope = 1, intercept = 0, color = 'red') +
   labs(title = "Actual vs Predicted Deaths (Week 6)", x = "Actual Deaths", y = "Predicted Deaths")
-
-
-
-
 
 
 
