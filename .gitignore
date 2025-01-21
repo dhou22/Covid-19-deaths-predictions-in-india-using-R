@@ -1,4 +1,6 @@
 .RData
 .Rhistory
 *.txt 
-India Deaths Prediction.R
+India_Deaths_Prediction.R
+*.jpg
+*.png
