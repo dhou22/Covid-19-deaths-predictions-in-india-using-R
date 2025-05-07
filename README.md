@@ -143,6 +143,6 @@ The workflow adheres to a rigorous research-driven approach:
 
 Created by **Dhouha Meliane**
 📧 [dhouhameliane@esprit.tn](mailto:dhouhameliane@esprit.tn)
-🔗 [LinkedIn](https://www.linkedin.com/in/your-link)
+🔗 [LinkedIn](https://www.linkedin.com/in/dhouha-meliane/)
 
 ---
