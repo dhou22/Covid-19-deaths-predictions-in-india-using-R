@@ -2,6 +2,8 @@
 
 Welcome to the **COVID-19 Deaths Prediction Project**, a comprehensive R-based system for analyzing and forecasting death rates due to the COVID-19 pandemic in India. Leveraging statistical methods and machine learning, this project primarily applies **Linear Regression** on real-world COVID-19 datasets to make predictions across different temporal windows.
 
+![image](https://github.com/user-attachments/assets/8f66244d-7626-472d-b739-8069b0fc48dd)
+
 ---
 
 ## 🚀 Project Overview
@@ -130,10 +132,10 @@ The workflow adheres to a rigorous research-driven approach:
 
 ## ⚠️ Limitations & Considerations
 
-⚠️ Data incompleteness or lag impacts prediction fidelity
-⚠️ External events (lockdowns, policy shifts) not captured
-⚠️ Model accuracy diminishes with long-term horizons
-⚠️ Regional imbalance in data can skew global performance
+  * Data incompleteness or lag impacts prediction fidelity
+  * External events (lockdowns, policy shifts) not captured
+  * Model accuracy diminishes with long-term horizons
+  * Regional imbalance in data can skew global performance
 
 ---
 
